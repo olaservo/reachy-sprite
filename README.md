@@ -5,6 +5,10 @@ A custom [Codex pet](https://github.com/openai/codex) sprite of the
 Hugging Face — round head, one big and one small camera eye, two wobbly
 antennae, cylindrical body).
 
+> **Note:** this is an unofficial, fan-made community sprite. It is not
+> affiliated with, endorsed by, or produced by Pollen Robotics or
+> Hugging Face. Reachy Mini is their robot and design.
+
 The sprite is generated deterministically by a Pillow script — no image
 model involved — so it can be tweaked and regenerated at any time.
 
