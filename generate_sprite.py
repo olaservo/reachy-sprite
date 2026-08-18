@@ -11,12 +11,21 @@ background, leading frames per row, trailing cells fully transparent.
 Row order (v1):
   1 idle | 2 running-right | 3 running-left | 4 waving | 5 jumping
   6 failed | 7 waiting | 8 running | 9 review
+
+The v2 atlas (1536x2288, 8 columns x 11 rows) appends two client-defined
+rows for renderers that support them (petdex, pet-viewer-for-codex):
+  10 curious (extra1) | 11 celebration (extra2)
+Both packages are written on every run: reachy-mini/ stays v1 for the
+first-party Codex overlay, reachy-mini-v2/ carries the extra rows.
 """
+
+import json
 
 from PIL import Image, ImageDraw
 
 # --- Atlas geometry -----------------------------------------------------------
-COLS, ROWS = 8, 9
+COLS = 8
+ROWS_V1, ROWS_V2 = 9, 11
 CELL_W, CELL_H = 192, 208
 SCALE = 4
 LW, LH = CELL_W // SCALE, CELL_H // SCALE  # 48 x 52 logical pixels
@@ -337,7 +346,67 @@ def row_review():
     return frames
 
 
-ROW_BUILDERS = [
+def draw_sparkle(d, sx, sy):
+    d.line([sx - 2, sy, sx + 2, sy], fill=SPARK, width=1)
+    d.line([sx, sy - 2, sx, sy + 2], fill=SPARK, width=1)
+
+
+def row_curious():
+    """Curious (v2 extra1): the robot cranes its head up on the neck toward
+    something off to the side and holds the stare, one antenna perked —
+    the same neck-crane the real robot does when something catches its
+    attention, distinct from waiting's side-to-side scanning."""
+    frames = []
+    cranes = [(0, 0, 0), (1, -2, 2), (2, -3, 3), (1, -2, 2)]  # head_dx, head_dy, look
+    styles = ["open", "open", "open", "blink"]
+    for i, (lean, lift, look) in enumerate(cranes):
+        img, d = new_frame()
+        ant_r = (5, 10) if i >= 1 else (2, 8)
+        ant_l = (-3, 9) if i >= 2 else (-2, 8)
+        draw_robot(img, head_dx=lean, head_dy=lift, look=look,
+                   eye_style=styles[i], ant_l=ant_l, ant_r=ant_r)
+        if i >= 2:
+            # pixel "?" hanging beside the raised head
+            qx, qy = LW - 10, 6
+            for px, py in ((1, 0), (2, 0), (0, 1), (3, 1), (3, 2),
+                           (2, 3), (2, 4), (2, 6)):
+                d.point((qx + px, qy + py), fill=SPARK)
+        frames.append(img)
+    return frames
+
+
+def row_celebrate():
+    """Celebration (v2 extra2): bigger than jumping — the whole figure
+    rocks side to side on the neck with antennae swinging like flags and
+    confetti sparkles popping around it. Still planted on the desk."""
+    frames = []
+    img, d = new_frame()
+    draw_robot(img, squash=1, head_dx=-2, eye_style="happy",
+               ant_l=(-6, 7), ant_r=(-2, 9))
+    draw_sparkle(d, 6, 16)
+    frames.append(img)
+    img, d = new_frame()
+    draw_robot(img, dy=-2, head_dy=-2, eye_style="happy",
+               ant_l=(0, 10), ant_r=(0, 10))
+    draw_sparkle(d, 8, 10)
+    draw_sparkle(d, LW - 8, 12)
+    frames.append(img)
+    img, d = new_frame()
+    draw_robot(img, squash=1, head_dx=2, eye_style="happy",
+               ant_l=(2, 9), ant_r=(6, 7))
+    draw_sparkle(d, LW - 6, 16)
+    frames.append(img)
+    img, d = new_frame()
+    draw_robot(img, dy=-2, head_dy=-3, eye_style="happy",
+               ant_l=(-1, 10), ant_r=(1, 10))
+    draw_sparkle(d, 6, 12)
+    draw_sparkle(d, LW - 7, 8)
+    draw_sparkle(d, LW // 2, 5)
+    frames.append(img)
+    return frames
+
+
+ROW_BUILDERS_V1 = [
     ("idle", row_idle),
     ("running-right", lambda: row_run(1)),
     ("running-left", lambda: row_run(-1)),
@@ -349,10 +418,15 @@ ROW_BUILDERS = [
     ("review", row_review),
 ]
 
+ROW_BUILDERS_V2 = ROW_BUILDERS_V1 + [
+    ("curious", row_curious),
+    ("celebration", row_celebrate),
+]
 
-def build_atlas():
-    atlas = Image.new("RGBA", (COLS * CELL_W, ROWS * CELL_H), (0, 0, 0, 0))
-    for row, (name, builder) in enumerate(ROW_BUILDERS):
+
+def build_atlas(builders):
+    atlas = Image.new("RGBA", (COLS * CELL_W, len(builders) * CELL_H), (0, 0, 0, 0))
+    for row, (name, builder) in enumerate(builders):
         frames = builder()
         assert len(frames) == FRAMES_PER_ROW, f"{name}: {len(frames)} frames"
         for col, frame in enumerate(frames):
@@ -361,10 +435,10 @@ def build_atlas():
     return atlas
 
 
-def verify(atlas):
+def verify(atlas, rows):
     """Trailing cells transparent; leading frames non-empty; no cell bleed."""
     ok = True
-    for row in range(ROWS):
+    for row in range(rows):
         for col in range(COLS):
             cell = atlas.crop((col * CELL_W, row * CELL_H,
                                (col + 1) * CELL_W, (row + 1) * CELL_H))
@@ -378,16 +452,16 @@ def verify(atlas):
             if has_pixels and cell.crop((0, 0, CELL_W, 1)).getextrema()[3][1] > 0:
                 print(f"FAIL: row {row + 1} col {col + 1} has art clipped at the cell top")
                 ok = False
-    if atlas.size != (1536, 1872):
-        print(f"FAIL: atlas size {atlas.size}, expected (1536, 1872)")
+    if atlas.size != (COLS * CELL_W, rows * CELL_H):
+        print(f"FAIL: atlas size {atlas.size}, expected {(COLS * CELL_W, rows * CELL_H)}")
         ok = False
     return ok
 
 
-def previews(atlas, outdir):
+def previews(atlas, builders, outdir):
     import os
     os.makedirs(outdir, exist_ok=True)
-    for row, (name, _) in enumerate(ROW_BUILDERS):
+    for row, (name, _) in enumerate(builders):
         strip = atlas.crop((0, row * CELL_H, FRAMES_PER_ROW * CELL_W, (row + 1) * CELL_H))
         bg = Image.new("RGBA", strip.size, (58, 58, 70, 255))
         bg.alpha_composite(strip)
@@ -403,12 +477,39 @@ def previews(atlas, outdir):
                        append_images=gif_bg[1:], duration=180, loop=0, disposal=2)
 
 
+def write_manifest(path, version):
+    manifest = {
+        "id": "reachy-mini",
+        "displayName": "Reachy Mini",
+        "description": "A tiny Reachy Mini desk robot: cream shell, "
+                       "two camera eyes, wobbly antennae.",
+        "spritesheetPath": "spritesheet.webp",
+        "spriteVersionNumber": version,
+    }
+    with open(path, "w") as f:
+        json.dump(manifest, f, indent=2)
+        f.write("\n")
+
+
 if __name__ == "__main__":
-    atlas = build_atlas()
-    if not verify(atlas):
+    import os
+
+    atlas_v1 = build_atlas(ROW_BUILDERS_V1)
+    atlas_v2 = build_atlas(ROW_BUILDERS_V2)
+    if not (verify(atlas_v1, ROWS_V1) and verify(atlas_v2, ROWS_V2)):
         raise SystemExit(1)
-    atlas.save("reachy-mini/spritesheet.webp", lossless=True)
-    atlas.save("preview/atlas.png")
-    previews(atlas, "preview")
-    print("OK: wrote reachy-mini/spritesheet.webp (1536x1872, 8x9 grid, "
-          f"{FRAMES_PER_ROW} leading frames per row)")
+
+    atlas_v1.save("reachy-mini/spritesheet.webp", lossless=True)
+    write_manifest("reachy-mini/pet.json", 1)
+
+    os.makedirs("reachy-mini-v2", exist_ok=True)
+    atlas_v2.save("reachy-mini-v2/spritesheet.webp", lossless=True)
+    write_manifest("reachy-mini-v2/pet.json", 2)
+
+    atlas_v1.save("preview/atlas.png")
+    atlas_v2.save("preview/atlas-v2.png")
+    previews(atlas_v2, ROW_BUILDERS_V2, "preview")
+
+    print(f"OK: wrote reachy-mini/spritesheet.webp (1536x1872, 8x{ROWS_V1} grid) "
+          f"and reachy-mini-v2/spritesheet.webp (1536x2288, 8x{ROWS_V2} grid), "
+          f"{FRAMES_PER_ROW} leading frames per row")
