@@ -52,11 +52,13 @@ def draw_antenna(d, x0, y0, tip_dx, tip_dy):
 
 
 def draw_eyes(d, cx, cy, style="open", look=0, scan=0):
-    """Reachy Mini's face: two equal round camera eyes joined by a thin
-    bridge, with a tiny center camera lens sitting on the bridge."""
+    """Reachy Mini's face: two round camera eyes — one slightly larger —
+    joined by a thin seam, with a tiny center camera lens sitting on it."""
     lx = cx - 7 + look
     rx = cx + 7 + look
     mx = cx + look
+    # (eye x, radius): the left lens is slightly bigger than the right
+    eyes = ((lx, 4), (rx, 3))
 
     # thin seam connecting the eyes + tiny center camera lens
     # (drawn first, eyes go on top)
@@ -65,24 +67,29 @@ def draw_eyes(d, cx, cy, style="open", look=0, scan=0):
     d.point((mx, cy - 1), fill=(170, 170, 180, 255))
 
     if style == "open":
-        for ex in (lx, rx):
-            d.ellipse([ex - 4, cy - 4, ex + 4, cy + 4], fill=EYE_DARK)
-            d.ellipse([ex - 2, cy - 3, ex, cy - 1], fill=EYE_GLINT)
+        for ex, r in eyes:
+            d.ellipse([ex - r, cy - r, ex + r, cy + r], fill=EYE_DARK)
+            if r >= 4:
+                d.ellipse([ex - r + 2, cy - r + 1, ex - r + 4, cy - r + 3], fill=EYE_GLINT)
+            else:
+                d.point((ex - 1, cy - 1), fill=EYE_GLINT)
     elif style == "blink":
-        for ex in (lx, rx):
-            d.line([ex - 4, cy, ex + 4, cy], fill=EYE_DARK, width=2)
+        for ex, r in eyes:
+            d.line([ex - r, cy, ex + r, cy], fill=EYE_DARK, width=2)
     elif style == "happy":
-        for ex in (lx, rx):
-            d.arc([ex - 4, cy - 3, ex + 4, cy + 5], 180, 360, fill=EYE_DARK, width=2)
+        for ex, r in eyes:
+            d.arc([ex - r, cy - 3, ex + r, cy + 5], 180, 360, fill=EYE_DARK, width=2)
     elif style == "dizzy":
-        for ex in (lx, rx):
-            d.line([ex - 3, cy - 3, ex + 3, cy + 3], fill=EYE_DARK, width=1)
-            d.line([ex - 3, cy + 3, ex + 3, cy - 3], fill=EYE_DARK, width=1)
+        for ex, r in eyes:
+            s = r - 1
+            d.line([ex - s, cy - s, ex + s, cy + s], fill=EYE_DARK, width=1)
+            d.line([ex - s, cy + s, ex + s, cy - s], fill=EYE_DARK, width=1)
     elif style == "scan":
-        for ex in (lx, rx):
-            d.rectangle([ex - 4, cy - 3, ex + 4, cy + 3], fill=EYE_DARK)
-            d.line([ex - 3 + scan, cy - 2, ex - 3 + scan, cy + 2],
-                   fill=(90, 220, 160, 255), width=1)
+        for ex, r in eyes:
+            d.rectangle([ex - r, cy - 3, ex + r, cy + 3], fill=EYE_DARK)
+            # sweep the scan line across each lens, scaled to its width
+            sx = ex - (r - 1) + (scan * (2 * (r - 1))) // 6
+            d.line([sx, cy - 2, sx, cy + 2], fill=(90, 220, 160, 255), width=1)
 
 
 def draw_robot(
@@ -149,8 +156,8 @@ def draw_robot(
     if glasses:
         lx, rx = hx - 7 + look, hx + 7 + look
         d.rectangle([lx - 5, face_cy - 5, lx + 5, face_cy + 5], outline=SPARK, width=1)
-        d.rectangle([rx - 5, face_cy - 5, rx + 5, face_cy + 5], outline=SPARK, width=1)
-        d.line([lx + 5, face_cy - 2, rx - 5, face_cy - 2], fill=SPARK, width=1)
+        d.rectangle([rx - 4, face_cy - 4, rx + 4, face_cy + 4], outline=SPARK, width=1)
+        d.line([lx + 5, face_cy - 2, rx - 4, face_cy - 2], fill=SPARK, width=1)
 
     # Antennae, planted on the head top.
     base_l = (hx - 6, head_top + head_tilt)

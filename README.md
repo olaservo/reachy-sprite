@@ -2,8 +2,9 @@
 
 A custom [Codex pet](https://github.com/openai/codex) sprite of the
 **Reachy Mini** robot (the little cream desk robot by Pollen Robotics /
-Hugging Face — round head, two round camera eyes joined by a thin seam
-with a tiny center camera lens, two wobbly antennae, cylindrical body).
+Hugging Face — round head, two round camera eyes of slightly different
+sizes joined by a thin seam with a tiny center camera lens, two wobbly
+antennae, cylindrical body).
 
 > **Note:** this is an unofficial, fan-made community sprite. It is not
 > affiliated with, endorsed by, or produced by Pollen Robotics or
