@@ -2,8 +2,8 @@
 
 A custom [Codex pet](https://github.com/openai/codex) sprite of the
 **Reachy Mini** robot (the little cream desk robot by Pollen Robotics /
-Hugging Face — round head, one big and one small camera eye, two wobbly
-antennae, cylindrical body).
+Hugging Face — round head, two round camera eyes joined by a thin seam
+with a tiny center camera lens, two wobbly antennae, cylindrical body).
 
 > **Note:** this is an unofficial, fan-made community sprite. It is not
 > affiliated with, endorsed by, or produced by Pollen Robotics or
@@ -36,7 +36,7 @@ preview/                per-row PNG strips and animated GIFs, plus the full atla
 | 6 | failed | flopped antennae, X eyes, sliding sweat drop |
 | 7 | waiting | looks left/right, head tilt, blink, "?" ripple |
 | 8 | running | front-facing bounce, streaks both sides |
-| 9 | review | reading glasses, green scan line sweeping the big lens |
+| 9 | review | reading glasses, green scan lines sweeping both lenses |
 
 A verification pass in `generate_sprite.py` asserts the atlas is exactly
 1536x1872 and that every trailing cell is fully transparent (the renderer
