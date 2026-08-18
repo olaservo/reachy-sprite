@@ -23,25 +23,45 @@ generate_sprite.py      generates the atlas + previews and verifies the layout
 preview/                per-row PNG strips and animated GIFs, plus the full atlas
 ```
 
+## How the real robot expresses itself
+
+The real Reachy Mini has no arms, no legs, and no display face — its
+camera eyes never change. All of its expression comes from three
+channels, which its emotion library records as trajectories of head
+pose + antenna angles + body yaw:
+
+- a **6-DOF neck** — pan, tilt, roll, plus vertical head bobbing
+- **full body rotation** around the vertical axis
+- **two independently animated antennae**
+
+The sprite animates the same channels: an independent head layer with
+sideways lean (`head_dx`), vertical bob (`head_dy`), and a faked roll
+(`tilt` — the face line and antenna bases go diagonal while the head
+slab stays pixel-crisp), plus per-frame antenna poses. Eye expressions
+(blinks, happy arcs, X eyes, scan lines) are a sprite-native cheat the
+real robot can't do, layered on top of the true body language.
+
 ## Atlas layout (v1)
 
-9 state rows, 4 leading frames each, trailing cells fully transparent:
+9 state rows, 4 leading frames each, trailing cells fully transparent.
+Each row is modeled on a move from the robot's emotion/gesture library:
 
-| Row | State | Animation |
-| --- | --- | --- |
-| 1 | idle | gentle bob, antenna sway, occasional blink |
-| 2 | running-right | lean right, bounce, speed streaks |
-| 3 | running-left | mirrored | 
-| 4 | waving | no arms — waves an antenna, happy eyes, sparkle |
-| 5 | jumping | squash, launch, hang with happy eyes, land |
-| 6 | failed | flopped antennae, X eyes, sliding sweat drop |
-| 7 | waiting | looks left/right, head tilt, blink, "?" ripple |
-| 8 | running | front-facing bounce, streaks both sides |
-| 9 | review | reading glasses, green scan lines sweeping both lenses |
+| Row | State | Real-robot move | Animation |
+| --- | --- | --- | --- |
+| 1 | idle | idle breathing | body + head bob, lazy head roll, antenna sway, blink |
+| 2 | running-right | — | head leans and rolls into the motion, speed streaks |
+| 3 | running-left | — | mirrored |
+| 4 | waving | greeting (nod) | head nods while one antenna waves big, happy eyes |
+| 5 | jumping | celebration | squash, launch, hang with antennae perked straight up |
+| 6 | failed | sad | head slumps low on the neck, antennae hang flat, X eyes, sweat drop |
+| 7 | waiting | curious | signature sideways head tilt with one antenna perked, glancing around |
+| 8 | running | — | front-facing bounce, streaks both sides |
+| 9 | review | thinking | studious head tilt held while glasses + scan lines sweep the lenses |
 
 A verification pass in `generate_sprite.py` asserts the atlas is exactly
-1536x1872 and that every trailing cell is fully transparent (the renderer
-detects frame count from leading non-empty cells).
+1536x1872, that every trailing cell is fully transparent (the renderer
+detects frame count from leading non-empty cells), and that no art is
+clipped against the top of its cell.
 
 ## Install
 

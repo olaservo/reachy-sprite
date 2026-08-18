@@ -51,49 +51,55 @@ def draw_antenna(d, x0, y0, tip_dx, tip_dy):
     d.ellipse([tip[0] - 1, tip[1] - 1, tip[0] + 1, tip[1] + 1], fill=ANTENNA)
 
 
-def draw_eyes(d, cx, cy, style="open", look=0, scan=0):
+def draw_eyes(d, cx, cy, style="open", look=0, scan=0, tilt=0):
     """Reachy Mini's face: two round camera eyes — one slightly larger —
-    joined by a thin seam, with a tiny center camera lens sitting on it."""
+    joined by a thin seam, with a tiny center camera lens sitting on it.
+
+    tilt fakes the real robot's head roll at pixel-art resolution: the
+    left eye drops by `tilt` px, the right rises, and the seam runs
+    diagonally between them (positive tilt = right side up)."""
     lx = cx - 7 + look
     rx = cx + 7 + look
     mx = cx + look
-    # (eye x, radius): the left lens is slightly bigger than the right
-    eyes = ((lx, 4), (rx, 3))
+    lcy = cy + tilt
+    rcy = cy - tilt
+    # (eye x, radius, eye center y): the left lens is slightly bigger
+    eyes = ((lx, 4, lcy), (rx, 3, rcy))
 
     # thin seam connecting the eyes + tiny center camera lens
     # (drawn first, eyes go on top)
-    d.line([lx, cy, rx, cy], fill=(150, 148, 140, 255), width=1)
+    d.line([lx, lcy, rx, rcy], fill=(150, 148, 140, 255), width=1)
     d.ellipse([mx - 1, cy - 1, mx + 1, cy + 1], fill=EYE_DARK)
     d.point((mx, cy - 1), fill=(170, 170, 180, 255))
 
     if style == "open":
-        for ex, r in eyes:
-            d.ellipse([ex - r, cy - r, ex + r, cy + r], fill=EYE_DARK)
+        for ex, r, ey in eyes:
+            d.ellipse([ex - r, ey - r, ex + r, ey + r], fill=EYE_DARK)
             if r >= 4:
-                d.ellipse([ex - r + 2, cy - r + 1, ex - r + 4, cy - r + 3], fill=EYE_GLINT)
+                d.ellipse([ex - r + 2, ey - r + 1, ex - r + 4, ey - r + 3], fill=EYE_GLINT)
             else:
-                d.point((ex - 1, cy - 1), fill=EYE_GLINT)
+                d.point((ex - 1, ey - 1), fill=EYE_GLINT)
     elif style == "blink":
-        for ex, r in eyes:
-            d.line([ex - r, cy, ex + r, cy], fill=EYE_DARK, width=2)
+        for ex, r, ey in eyes:
+            d.line([ex - r, ey, ex + r, ey], fill=EYE_DARK, width=2)
     elif style == "happy":
-        for ex, r in eyes:
-            d.arc([ex - r, cy - 3, ex + r, cy + 5], 180, 360, fill=EYE_DARK, width=2)
+        for ex, r, ey in eyes:
+            d.arc([ex - r, ey - 3, ex + r, ey + 5], 180, 360, fill=EYE_DARK, width=2)
     elif style == "dizzy":
-        for ex, r in eyes:
+        for ex, r, ey in eyes:
             s = r - 1
-            d.line([ex - s, cy - s, ex + s, cy + s], fill=EYE_DARK, width=1)
-            d.line([ex - s, cy + s, ex + s, cy - s], fill=EYE_DARK, width=1)
+            d.line([ex - s, ey - s, ex + s, ey + s], fill=EYE_DARK, width=1)
+            d.line([ex - s, ey + s, ex + s, ey - s], fill=EYE_DARK, width=1)
     elif style == "scan":
-        for ex, r in eyes:
-            d.rectangle([ex - r, cy - 3, ex + r, cy + 3], fill=EYE_DARK)
+        for ex, r, ey in eyes:
+            d.rectangle([ex - r, ey - 3, ex + r, ey + 3], fill=EYE_DARK)
             # sweep the scan line across each lens, scaled to its width
             sx = ex - (r - 1) + (scan * (2 * (r - 1))) // 6
-            d.line([sx, cy - 2, sx, cy + 2], fill=(90, 220, 160, 255), width=1)
+            d.line([sx, ey - 2, sx, ey + 2], fill=(90, 220, 160, 255), width=1)
 
 
 def draw_robot(
-    d,
+    img,
     dy=0,
     squash=0,
     look=0,
@@ -102,16 +108,23 @@ def draw_robot(
     ant_l=(-2, 8),
     ant_r=(2, 8),
     head_dx=0,
-    head_tilt=0,
+    head_dy=0,
+    tilt=0,
     glasses=False,
     ground_shadow=True,
 ):
     """Draw the whole robot into one logical frame.
 
-    dy: vertical offset (negative = up).  squash: extra px removed from body
-    height (bounce squash).  head_dx: sideways head shift for leaning.
-    head_tilt: vertical offset added to one side of the antennae bases.
+    The real Reachy Mini expresses itself with a 6-DOF neck (pan / tilt /
+    roll plus vertical bob), full body rotation, and two animated antennae,
+    so the head gets its own movement channels independent of the body:
+
+    dy: whole-figure vertical offset (negative = up).  squash: bounce squash.
+    head_dx / head_dy: neck pan lean and vertical head bob (neck z).
+    tilt: fake head roll in px — face line and antenna bases go diagonal
+    (positive = right side up); the head slab itself stays crisp.
     """
+    d = ImageDraw.Draw(img)
     cx = LW // 2
     ground = LH - 5
 
@@ -139,9 +152,10 @@ def draw_robot(
     head_h = 19 + squash // 2
     head_w = 30
     hx = cx + head_dx
-    head_top = body_top - head_h + 2
+    head_top = body_top - head_h + 2 + head_dy
+    head_bottom = body_top + 2 + head_dy
     d.rounded_rectangle(
-        [hx - head_w // 2, head_top, hx + head_w // 2, body_top + 2],
+        [hx - head_w // 2, head_top, hx + head_w // 2, head_bottom],
         radius=8,
         fill=CREAM,
         outline=OUTLINE,
@@ -151,19 +165,18 @@ def draw_robot(
     d.line([hx - 8, head_top + 2, hx + 8, head_top + 2], fill=CREAM_BRIGHT, width=1)
 
     face_cy = head_top + head_h // 2 + 1
-    draw_eyes(d, hx, face_cy, style=eye_style, look=look, scan=scan)
+    draw_eyes(d, hx, face_cy, style=eye_style, look=look, scan=scan, tilt=tilt)
 
     if glasses:
         lx, rx = hx - 7 + look, hx + 7 + look
-        d.rectangle([lx - 5, face_cy - 5, lx + 5, face_cy + 5], outline=SPARK, width=1)
-        d.rectangle([rx - 4, face_cy - 4, rx + 4, face_cy + 4], outline=SPARK, width=1)
-        d.line([lx + 5, face_cy - 2, rx - 4, face_cy - 2], fill=SPARK, width=1)
+        lcy, rcy = face_cy + tilt, face_cy - tilt
+        d.rectangle([lx - 5, lcy - 5, lx + 5, lcy + 5], outline=SPARK, width=1)
+        d.rectangle([rx - 4, rcy - 4, rx + 4, rcy + 4], outline=SPARK, width=1)
+        d.line([lx + 5, lcy - 2, rx - 4, rcy - 2], fill=SPARK, width=1)
 
-    # Antennae, planted on the head top.
-    base_l = (hx - 6, head_top + head_tilt)
-    base_r = (hx + 6, head_top - head_tilt)
-    draw_antenna(d, *base_l, *ant_l)
-    draw_antenna(d, *base_r, *ant_r)
+    # Antennae, planted on the head top; their bases follow the head roll.
+    draw_antenna(d, hx - 6, head_top + tilt, *ant_l)
+    draw_antenna(d, hx + 6, head_top - tilt, *ant_r)
 
 
 def motion_lines(d, side, y=30):
@@ -181,13 +194,17 @@ def motion_lines(d, side, y=30):
 # --- Per-row frame builders ---------------------------------------------------
 
 def row_idle():
+    """Breathing bob with a lazy head sway — the neck is always alive."""
     frames = []
     bob = [0, -1, -1, 0]
+    head_bob = [0, -1, -1, 0]
+    tilts = [0, 1, 0, -1]
     sway = [(-2, 8), (-5, 7), (-2, 8), (1, 8)]
     sway_r = [(2, 8), (-1, 8), (2, 8), (5, 7)]
     for i in range(4):
         img, d = new_frame()
-        draw_robot(d, dy=bob[i], eye_style="blink" if i == 3 else "open",
+        draw_robot(img, dy=bob[i], head_dy=head_bob[i], tilt=tilts[i],
+                   eye_style="blink" if i == 3 else "open",
                    ant_l=sway[i], ant_r=sway_r[i])
         frames.append(img)
     return frames
@@ -204,8 +221,9 @@ def row_run(direction):
         trail = -4 * direction if direction else 0
         ant_l = (trail - 2, 7 if i % 2 else 8)
         ant_r = (trail + 2, 8 if i % 2 else 7)
-        draw_robot(d, dy=bob[i], squash=sq[i], look=look,
-                   head_dx=2 * direction, ant_l=ant_l, ant_r=ant_r)
+        draw_robot(img, dy=bob[i], squash=sq[i], look=look,
+                   head_dx=2 * direction, tilt=-direction,
+                   ant_l=ant_l, ant_r=ant_r)
         if direction:
             motion_lines(d, -direction)
         else:
@@ -216,13 +234,16 @@ def row_run(direction):
 
 
 def row_wave():
-    """Non-looping greeting: no arms, so Reachy waves with an antenna."""
+    """Non-looping greeting: the real robot greets with a head nod and an
+    antenna wiggle, so nod the head while one antenna waves big."""
     frames = []
     wave = [(2, 8), (6, 6), (2, 9), (6, 6)]
+    nod = [0, 2, 0, 2]
     for i in range(4):
         img, d = new_frame()
-        draw_robot(d, dy=-1 if i % 2 else 0, eye_style="happy",
-                   ant_l=(-2, 8), ant_r=wave[i], head_tilt=1 if i % 2 else 0)
+        draw_robot(img, dy=-1 if i % 2 else 0, head_dy=nod[i],
+                   eye_style="happy",
+                   ant_l=(-2, 8), ant_r=wave[i], tilt=1 if i % 2 else 0)
         if i in (1, 3):
             x, y = LW - 8, 8
             d.line([x - 2, y, x + 2, y], fill=SPARK, width=1)
@@ -232,29 +253,35 @@ def row_wave():
 
 
 def row_jump():
+    """Celebration: squash, launch, hang with antennae perked straight up."""
     frames = []
     img, d = new_frame()
-    draw_robot(d, dy=0, squash=3, ant_l=(-3, 6), ant_r=(3, 6))
+    draw_robot(img, dy=0, squash=3, head_dy=1, ant_l=(-3, 6), ant_r=(3, 6))
     frames.append(img)
     img, d = new_frame()
-    draw_robot(d, dy=-7, eye_style="open", ant_l=(-2, 10), ant_r=(2, 10))
+    draw_robot(img, dy=-6, eye_style="open",
+               ant_l=(-1, 9), ant_r=(1, 9))
     frames.append(img)
     img, d = new_frame()
-    draw_robot(d, dy=-11, eye_style="happy", ant_l=(-4, 9), ant_r=(4, 9))
+    draw_robot(img, dy=-7, eye_style="happy",
+               ant_l=(0, 8), ant_r=(0, 8))
     frames.append(img)
     img, d = new_frame()
-    draw_robot(d, dy=-3, squash=1, ant_l=(-3, 10), ant_r=(3, 10))
+    draw_robot(img, dy=-3, squash=1, ant_l=(-3, 10), ant_r=(3, 10))
     frames.append(img)
     return frames
 
 
 def row_failed():
+    """Sad: the real move drops the head low on the neck with antennae
+    hanging flat; the whole figure slumps and barely breathes."""
     frames = []
     for i in range(4):
         img, d = new_frame()
         droop_l = (-8, 2) if i % 2 == 0 else (-8, 1)
         droop_r = (8, 1) if i % 2 == 0 else (8, 2)
-        draw_robot(d, dy=1, eye_style="dizzy", ant_l=droop_l, ant_r=droop_r,
+        draw_robot(img, dy=1, head_dy=3 if i % 2 else 2, tilt=1,
+                   eye_style="dizzy", ant_l=droop_l, ant_r=droop_r,
                    squash=1)
         # sweat drop sliding down beside the head
         sx, sy = LW - 9, 14 + i
@@ -265,13 +292,20 @@ def row_failed():
 
 
 def row_waiting():
+    """Curious: Reachy's signature move is a sideways head tilt with one
+    antenna perked, glancing around while it waits."""
     frames = []
     looks = [-3, 0, 3, 0]
+    tilts = [2, 0, -2, 0]
+    leans = [-1, 0, 1, 0]
     styles = ["open", "open", "open", "blink"]
     for i in range(4):
         img, d = new_frame()
-        draw_robot(d, dy=0 if i % 2 else -1, look=looks[i], eye_style=styles[i],
-                   ant_l=(-2, 8), ant_r=(2, 8), head_tilt=1 if i == 2 else 0)
+        ant_l = (-4, 9) if i == 0 else (-2, 8)
+        ant_r = (4, 9) if i == 2 else (2, 8)
+        draw_robot(img, dy=0 if i % 2 else -1, look=looks[i],
+                   tilt=tilts[i], head_dx=leans[i], eye_style=styles[i],
+                   ant_l=ant_l, ant_r=ant_r)
         if i == 1:
             x, y = LW - 10, 9
             for r in (1, 3):
@@ -281,11 +315,13 @@ def row_waiting():
 
 
 def row_review():
+    """Thinking: a slight studious head tilt held while the lenses scan."""
     frames = []
     scans = [0, 2, 4, 6]
     for i in range(4):
         img, d = new_frame()
-        draw_robot(d, dy=0, eye_style="scan", scan=scans[i], glasses=True,
+        draw_robot(img, dy=0, tilt=1, head_dy=-1 if i % 2 else 0,
+                   eye_style="scan", scan=scans[i], glasses=True,
                    ant_l=(-2, 8), ant_r=(2, 8))
         frames.append(img)
     return frames
@@ -328,6 +364,9 @@ def verify(atlas):
                 ok = False
             if col >= FRAMES_PER_ROW and has_pixels:
                 print(f"FAIL: row {row + 1} col {col + 1} should be fully transparent")
+                ok = False
+            if has_pixels and cell.crop((0, 0, CELL_W, 1)).getextrema()[3][1] > 0:
+                print(f"FAIL: row {row + 1} col {col + 1} has art clipped at the cell top")
                 ok = False
     if atlas.size != (1536, 1872):
         print(f"FAIL: atlas size {atlas.size}, expected (1536, 1872)")
