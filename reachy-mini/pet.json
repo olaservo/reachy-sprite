@@ -1,0 +1,7 @@
+{
+  "id": "reachy-mini",
+  "displayName": "Reachy Mini",
+  "description": "A tiny Reachy Mini desk robot: cream shell, two camera eyes, wobbly antennae.",
+  "spritesheetPath": "spritesheet.webp",
+  "spriteVersionNumber": 1
+}
