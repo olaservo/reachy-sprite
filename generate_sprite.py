@@ -293,8 +293,7 @@ def row_failed():
         droop_l = (-14, -7) if i % 2 == 0 else (-14, -6)
         droop_r = (14, -6) if i % 2 == 0 else (14, -7)
         draw_robot(img, dy=1, head_dy=3 if i % 2 else 2, ant_behind=True,
-                   eye_style="dizzy", ant_l=droop_l, ant_r=droop_r,
-                   squash=1)
+                   ant_l=droop_l, ant_r=droop_r, squash=1)
         # sweat drop sliding down beside the head
         sx, sy = LW - 9, 14 + i
         d.polygon([(sx, sy - 3), (sx - 2, sy + 1), (sx + 2, sy + 1)], fill=SWEAT)
