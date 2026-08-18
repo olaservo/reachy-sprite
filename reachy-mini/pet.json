@@ -8,39 +8,87 @@
     "idle": {
       "row": 0,
       "startColumn": 0,
-      "frameCount": 4,
-      "frameDurationMs": 180
+      "frameCount": 6,
+      "frameDurationMs": 140,
+      "frameDurationsMs": [
+        280,
+        110,
+        110,
+        140,
+        140,
+        320
+      ]
     },
     "waving": {
       "row": 3,
       "startColumn": 0,
       "frameCount": 4,
-      "frameDurationMs": 180,
+      "frameDurationMs": 140,
+      "frameDurationsMs": [
+        140,
+        140,
+        140,
+        280
+      ],
       "loop": false
     },
     "failed": {
       "row": 5,
       "startColumn": 0,
-      "frameCount": 4,
-      "frameDurationMs": 180
+      "frameCount": 8,
+      "frameDurationMs": 140,
+      "frameDurationsMs": [
+        140,
+        140,
+        140,
+        140,
+        140,
+        140,
+        140,
+        240
+      ]
     },
     "waiting": {
       "row": 6,
       "startColumn": 0,
-      "frameCount": 4,
-      "frameDurationMs": 180
+      "frameCount": 6,
+      "frameDurationMs": 150,
+      "frameDurationsMs": [
+        150,
+        150,
+        150,
+        150,
+        150,
+        260
+      ]
     },
     "running": {
       "row": 7,
       "startColumn": 0,
-      "frameCount": 4,
-      "frameDurationMs": 180
+      "frameCount": 6,
+      "frameDurationMs": 120,
+      "frameDurationsMs": [
+        120,
+        120,
+        120,
+        120,
+        120,
+        220
+      ]
     },
     "review": {
       "row": 8,
       "startColumn": 0,
-      "frameCount": 4,
-      "frameDurationMs": 180
+      "frameCount": 6,
+      "frameDurationMs": 150,
+      "frameDurationsMs": [
+        150,
+        150,
+        150,
+        150,
+        150,
+        280
+      ]
     }
   }
 }

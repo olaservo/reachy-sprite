@@ -12,9 +12,17 @@ Row order (v1):
   1 idle | 2 running-right | 3 running-left | 4 waving | 5 jumping
   6 failed | 7 waiting | 8 running | 9 review
 
+Frame counts per row follow the tables hardcoded in the petdex desktop
+renderer (sprite.zig) and pet-viewer-for-codex's defaults (PetLoader.ts),
+which agree with each other: idle 6, running-right/left 8, waving 4,
+jumping 5, failed 8, waiting 6, running 6, review 6. Neither renderer
+detects frame count from the pixels, so rows shorter than these play
+blank trailing frames there; first-party Codex detects leading non-empty
+cells and simply plays what exists.
+
 The v2 atlas (1536x2288, 8 columns x 11 rows) appends two client-defined
-rows for renderers that support them (petdex, pet-viewer-for-codex):
-  10 curious (extra1) | 11 celebration (extra2)
+rows for renderers that support the layout:
+  10 curious (6 frames) | 11 celebration (4 frames)
 Both packages are written on every run: reachy-mini/ stays v1 for the
 first-party Codex overlay, reachy-mini-v2/ carries the extra rows.
 """
@@ -29,8 +37,6 @@ ROWS_V1, ROWS_V2 = 9, 11
 CELL_W, CELL_H = 192, 208
 SCALE = 4
 LW, LH = CELL_W // SCALE, CELL_H // SCALE  # 48 x 52 logical pixels
-
-FRAMES_PER_ROW = 4  # leading frames used in every row; trailing cells stay clear
 
 # --- Palette ------------------------------------------------------------------
 OUTLINE = (42, 42, 50, 255)
@@ -214,39 +220,45 @@ def motion_lines(d, side, y=30):
 # --- Per-row frame builders ---------------------------------------------------
 
 def row_idle():
-    """Breathing bob with a lazy head sway — the neck is always alive."""
+    """Breathing bob with a lazy head sway — the neck is always alive.
+    Frame 0 is the neutral rest pose: pet-viewer holds it 2-5 s between
+    loops, so it must read as 'at rest', and the blink lives mid-cycle."""
     frames = []
-    bob = [0, -1, -1, 0]
-    head_bob = [0, -1, -1, 0]
-    sway = [(-2, 8), (-5, 7), (-2, 8), (1, 8)]
-    sway_r = [(2, 8), (-1, 8), (2, 8), (5, 7)]
-    for i in range(4):
+    bob = [0, -1, -1, 0, 0, 0]
+    head_bob = [0, -1, -2, -1, 0, 0]
+    sway = [(-2, 8), (-4, 7), (-5, 7), (-2, 8), (0, 8), (-2, 8)]
+    sway_r = [(2, 8), (0, 8), (-1, 8), (2, 8), (4, 7), (2, 8)]
+    styles = ["open", "open", "open", "open", "blink", "open"]
+    for i in range(6):
         img, d = new_frame()
-        draw_robot(img, dy=bob[i], head_dy=head_bob[i],
-                   eye_style="blink" if i == 3 else "open",
+        draw_robot(img, dy=bob[i], head_dy=head_bob[i], eye_style=styles[i],
                    ant_l=sway[i], ant_r=sway_r[i])
         frames.append(img)
     return frames
 
 
 def row_run(direction):
-    """direction: 1 = right, -1 = left, 0 = generic front-facing run."""
+    """direction: 1 = right, -1 = left, 0 = generic front-facing run.
+    Directional runs are 8 frames, the front-facing one 6, matching the
+    renderers' tables; the bounce repeats with the antennae fluttering on
+    a slower cycle so the halves don't read as a straight copy."""
     frames = []
-    bob = [0, -3, 0, -3]
-    sq = [1, 0, 1, 0]
-    for i in range(4):
+    n = 8 if direction else 6
+    for i in range(n):
         img, d = new_frame()
+        rise = i % 2
+        flut = (i // 2) % 2
         look = 3 * direction
         trail = -4 * direction if direction else 0
-        ant_l = (trail - 2, 7 if i % 2 else 8)
-        ant_r = (trail + 2, 8 if i % 2 else 7)
-        draw_robot(img, dy=bob[i], squash=sq[i], look=look,
-                   head_dx=2 * direction, ant_l=ant_l, ant_r=ant_r)
+        ant_l = (trail - 2, 7 if (rise + flut) % 2 else 8)
+        ant_r = (trail + 2, 8 if (rise + flut) % 2 else 7)
+        draw_robot(img, dy=-3 if rise else 0, squash=0 if rise else 1,
+                   look=look, head_dx=2 * direction, ant_l=ant_l, ant_r=ant_r)
         if direction:
-            motion_lines(d, -direction)
+            motion_lines(d, -direction, y=30 - rise)
         else:
-            motion_lines(d, -1)
-            motion_lines(d, 1)
+            motion_lines(d, -1, y=30 - rise)
+            motion_lines(d, 1, y=30 - rise)
         frames.append(img)
     return frames
 
@@ -282,10 +294,14 @@ def row_jump():
     frames.append(img)
     img, d = new_frame()
     draw_robot(img, head_dy=-5, eye_style="happy", ant_l=(0, 10), ant_r=(0, 10))
-    d = ImageDraw.Draw(img)
-    for sx, sy in ((6, 14), (LW - 6, 12)):
-        d.line([sx - 2, sy, sx + 2, sy], fill=SPARK, width=1)
-        d.line([sx, sy - 2, sx, sy + 2], fill=SPARK, width=1)
+    draw_sparkle(d, 6, 14)
+    draw_sparkle(d, LW - 6, 12)
+    frames.append(img)
+    # hang at the top a beat with fresh sparkles before settling
+    img, d = new_frame()
+    draw_robot(img, head_dy=-4, eye_style="happy", ant_l=(-1, 10), ant_r=(1, 10))
+    draw_sparkle(d, 8, 9)
+    draw_sparkle(d, LW - 9, 16)
     frames.append(img)
     img, d = new_frame()
     draw_robot(img, head_dy=-2, ant_l=(-2, 9), ant_r=(2, 9))
@@ -295,16 +311,17 @@ def row_jump():
 
 def row_failed():
     """Sad: the real move drops the head low on the neck with antennae
-    hanging flat; the whole figure slumps and barely breathes."""
+    hanging flat; the whole figure slumps and barely breathes while the
+    sweat drop slides all the way down beside the head."""
     frames = []
-    for i in range(4):
+    for i in range(8):
         img, d = new_frame()
         droop_l = (-14, -7) if i % 2 == 0 else (-14, -6)
         droop_r = (14, -6) if i % 2 == 0 else (14, -7)
-        draw_robot(img, dy=1, head_dy=3 if i % 2 else 2, ant_behind=True,
+        draw_robot(img, dy=1, head_dy=3 if (i // 2) % 2 else 2, ant_behind=True,
                    ant_l=droop_l, ant_r=droop_r, squash=1)
         # sweat drop sliding down beside the head
-        sx, sy = LW - 9, 14 + i
+        sx, sy = LW - 9, 12 + i
         d.polygon([(sx, sy - 3), (sx - 2, sy + 1), (sx + 2, sy + 1)], fill=SWEAT)
         d.ellipse([sx - 2, sy - 1, sx + 2, sy + 3], fill=SWEAT)
         frames.append(img)
@@ -312,20 +329,21 @@ def row_failed():
 
 
 def row_waiting():
-    """Curious: glancing around with the head panning side to side and
-    one antenna perked toward whatever caught its eye."""
+    """Glancing around while it waits: the head pans side to side and
+    holds each glance a beat, one antenna perked toward whatever caught
+    its eye."""
     frames = []
-    looks = [-3, 0, 3, 0]
-    leans = [-2, 0, 2, 0]
-    styles = ["open", "open", "open", "blink"]
-    for i in range(4):
+    looks = [-3, -3, 0, 3, 3, 0]
+    leans = [-2, -2, 0, 2, 2, 0]
+    styles = ["open", "open", "open", "open", "open", "blink"]
+    for i in range(6):
         img, d = new_frame()
-        ant_l = (-4, 9) if i == 0 else (-2, 8)
-        ant_r = (4, 9) if i == 2 else (2, 8)
+        ant_l = (-4, 9) if i <= 1 else (-2, 8)
+        ant_r = (4, 9) if i in (3, 4) else (2, 8)
         draw_robot(img, dy=0 if i % 2 else -1, look=looks[i],
                    head_dx=leans[i], eye_style=styles[i],
                    ant_l=ant_l, ant_r=ant_r)
-        if i == 1:
+        if i == 2:
             x, y = LW - 10, 9
             for r in (1, 3):
                 d.ellipse([x - r, y - r, x + r, y + r], outline=MOTION, width=1)
@@ -336,10 +354,10 @@ def row_waiting():
 def row_review():
     """Thinking: head bobbing slightly while the lenses scan."""
     frames = []
-    scans = [0, 2, 4, 6]
-    for i in range(4):
+    scans = [0, 1, 2, 4, 5, 6]
+    for i in range(6):
         img, d = new_frame()
-        draw_robot(img, dy=0, head_dy=-1 if i % 2 else 0,
+        draw_robot(img, dy=0, head_dy=-1 if (i // 2) % 2 else 0,
                    eye_style="scan", scan=scans[i], glasses=True,
                    ant_l=(-2, 8), ant_r=(2, 8))
         frames.append(img)
@@ -352,20 +370,21 @@ def draw_sparkle(d, sx, sy):
 
 
 def row_curious():
-    """Curious (v2 extra1): the robot cranes its head up on the neck toward
-    something off to the side and holds the stare, one antenna perked —
-    the same neck-crane the real robot does when something catches its
-    attention, distinct from waiting's side-to-side scanning."""
+    """Curious (v2 extra row): the robot cranes its head up on the neck
+    toward something off to the side and holds the stare, one antenna
+    perked — the same neck-crane the real robot does when something
+    catches its attention, distinct from waiting's side-to-side scan."""
     frames = []
-    cranes = [(0, 0, 0), (1, -2, 2), (2, -3, 3), (1, -2, 2)]  # head_dx, head_dy, look
-    styles = ["open", "open", "open", "blink"]
+    cranes = [(0, 0, 0), (1, -1, 1), (1, -2, 2),  # head_dx, head_dy, look
+              (2, -3, 3), (2, -3, 3), (1, -2, 2)]
+    styles = ["open", "open", "open", "open", "blink", "open"]
     for i, (lean, lift, look) in enumerate(cranes):
         img, d = new_frame()
-        ant_r = (5, 10) if i >= 1 else (2, 8)
-        ant_l = (-3, 9) if i >= 2 else (-2, 8)
+        ant_r = (5, 10) if i >= 3 else (3, 9) if i >= 1 else (2, 8)
+        ant_l = (-3, 9) if i >= 3 else (-2, 8)
         draw_robot(img, head_dx=lean, head_dy=lift, look=look,
                    eye_style=styles[i], ant_l=ant_l, ant_r=ant_r)
-        if i >= 2:
+        if i >= 3:
             # pixel "?" hanging beside the raised head
             qx, qy = LW - 10, 6
             for px, py in ((1, 0), (2, 0), (0, 1), (3, 1), (3, 2),
@@ -406,101 +425,120 @@ def row_celebrate():
     return frames
 
 
-ROW_BUILDERS_V1 = [
-    ("idle", row_idle),
-    ("running-right", lambda: row_run(1)),
-    ("running-left", lambda: row_run(-1)),
-    ("waving", row_wave),
-    ("jumping", row_jump),
-    ("failed", row_failed),
-    ("waiting", row_waiting),
-    ("running", lambda: row_run(0)),
-    ("review", row_review),
+def uniform(n, dur, last):
+    """Per-frame durations the way both renderers write them: n frames at
+    dur ms with a longer hold on the last."""
+    return [dur] * (n - 1) + [last]
+
+
+# (name, builder, per-frame durations) — frame count is len(durations).
+# Counts and timings mirror petdex's sprite.zig table, which matches
+# pet-viewer-for-codex's PetLoader.ts defaults.
+ROW_SPECS_V1 = [
+    ("idle", row_idle, [280, 110, 110, 140, 140, 320]),
+    ("running-right", lambda: row_run(1), uniform(8, 120, 220)),
+    ("running-left", lambda: row_run(-1), uniform(8, 120, 220)),
+    ("waving", row_wave, uniform(4, 140, 280)),
+    ("jumping", row_jump, uniform(5, 140, 280)),
+    ("failed", row_failed, uniform(8, 140, 240)),
+    ("waiting", row_waiting, uniform(6, 150, 260)),
+    ("running", lambda: row_run(0), uniform(6, 120, 220)),
+    ("review", row_review, uniform(6, 150, 280)),
 ]
 
-ROW_BUILDERS_V2 = ROW_BUILDERS_V1 + [
-    ("curious", row_curious),
-    ("celebration", row_celebrate),
+ROW_SPECS_V2 = ROW_SPECS_V1 + [
+    ("curious", row_curious, uniform(6, 150, 260)),
+    ("celebration", row_celebrate, uniform(4, 140, 280)),
 ]
 
 
-def build_atlas(builders):
-    atlas = Image.new("RGBA", (COLS * CELL_W, len(builders) * CELL_H), (0, 0, 0, 0))
-    for row, (name, builder) in enumerate(builders):
+def build_atlas(specs):
+    atlas = Image.new("RGBA", (COLS * CELL_W, len(specs) * CELL_H), (0, 0, 0, 0))
+    for row, (name, builder, durations) in enumerate(specs):
         frames = builder()
-        assert len(frames) == FRAMES_PER_ROW, f"{name}: {len(frames)} frames"
+        assert len(frames) == len(durations), f"{name}: {len(frames)} frames"
         for col, frame in enumerate(frames):
             big = frame.resize((CELL_W, CELL_H), Image.NEAREST)
             atlas.paste(big, (col * CELL_W, row * CELL_H))
     return atlas
 
 
-def verify(atlas, rows):
+def verify(atlas, specs):
     """Trailing cells transparent; leading frames non-empty; no cell bleed."""
     ok = True
-    for row in range(rows):
+    for row, (name, _, durations) in enumerate(specs):
+        n_frames = len(durations)
         for col in range(COLS):
             cell = atlas.crop((col * CELL_W, row * CELL_H,
                                (col + 1) * CELL_W, (row + 1) * CELL_H))
             has_pixels = cell.getextrema()[3][1] > 0
-            if col < FRAMES_PER_ROW and not has_pixels:
+            if col < n_frames and not has_pixels:
                 print(f"FAIL: row {row + 1} col {col + 1} is empty but should be a frame")
                 ok = False
-            if col >= FRAMES_PER_ROW and has_pixels:
+            if col >= n_frames and has_pixels:
                 print(f"FAIL: row {row + 1} col {col + 1} should be fully transparent")
                 ok = False
             if has_pixels and cell.crop((0, 0, CELL_W, 1)).getextrema()[3][1] > 0:
                 print(f"FAIL: row {row + 1} col {col + 1} has art clipped at the cell top")
                 ok = False
-    if atlas.size != (COLS * CELL_W, rows * CELL_H):
-        print(f"FAIL: atlas size {atlas.size}, expected {(COLS * CELL_W, rows * CELL_H)}")
+    if atlas.size != (COLS * CELL_W, len(specs) * CELL_H):
+        print(f"FAIL: atlas size {atlas.size}, expected {(COLS * CELL_W, len(specs) * CELL_H)}")
         ok = False
     return ok
 
 
-def previews(atlas, builders, outdir):
+def previews(atlas, specs, outdir):
     import os
     os.makedirs(outdir, exist_ok=True)
-    for row, (name, _) in enumerate(builders):
-        strip = atlas.crop((0, row * CELL_H, FRAMES_PER_ROW * CELL_W, (row + 1) * CELL_H))
+    for row, (name, _, durations) in enumerate(specs):
+        n_frames = len(durations)
+        strip = atlas.crop((0, row * CELL_H, n_frames * CELL_W, (row + 1) * CELL_H))
         bg = Image.new("RGBA", strip.size, (58, 58, 70, 255))
         bg.alpha_composite(strip)
         bg.save(f"{outdir}/{row + 1:02d}-{name}.png")
         gif = [atlas.crop((c * CELL_W, row * CELL_H, (c + 1) * CELL_W, (row + 1) * CELL_H))
-               for c in range(FRAMES_PER_ROW)]
+               for c in range(n_frames)]
         gif_bg = []
         for f in gif:
             b = Image.new("RGBA", f.size, (58, 58, 70, 255))
             b.alpha_composite(f)
             gif_bg.append(b.convert("P", palette=Image.ADAPTIVE))
         gif_bg[0].save(f"{outdir}/{row + 1:02d}-{name}.gif", save_all=True,
-                       append_images=gif_bg[1:], duration=180, loop=0, disposal=2)
+                       append_images=gif_bg[1:], duration=durations, loop=0,
+                       disposal=2)
 
 
-def animation(row, loop=True):
-    """One pet-viewer-for-codex animation entry. All four required keys must
-    be present or the entry is silently dropped by its parser."""
+def animation(specs, row_name, loop=True):
+    """One pet-viewer-for-codex animation entry for the named row. All of
+    row/startColumn/frameCount/frameDurationMs must be present or the entry
+    is silently dropped by its parser; frameDurationsMs must have exactly
+    frameCount entries or it is discarded."""
+    row = [name for name, _, _ in specs].index(row_name)
+    durations = specs[row][2]
     entry = {
         "row": row,
         "startColumn": 0,
-        "frameCount": FRAMES_PER_ROW,
-        "frameDurationMs": 180,
+        "frameCount": len(durations),
+        "frameDurationMs": max(set(durations), key=durations.count),
+        "frameDurationsMs": durations,
     }
     if not loop:
         entry["loop"] = False
     return entry
 
 
-def write_manifest(path, version):
+def write_manifest(path, version, specs):
     """First-party Codex reads id/displayName/description/spritesheetPath and
     ignores the rest. pet-viewer-for-codex additionally reads
-    spriteVersionNumber (row-count hint) and `animations` — without which it
-    plays its own hardcoded table (6-8 frames per row) and our 4-frame rows
-    would show blank frames. Its animation names are a fixed set of six
-    (idle, waving, running, waiting, review, failed); rows beyond those are
-    never played unless one of the six names is remapped onto them, which is
-    how the v2 package exposes its extra rows: waiting -> curious (row 10)
-    and the click-to-wave interaction -> celebration (row 11)."""
+    spriteVersionNumber (row-count hint) and `animations`, defaulting to a
+    hardcoded table when the block is absent. Its animation names are a
+    fixed set of six (idle, waving, running, waiting, review, failed);
+    rows beyond those never play unless one of the six names is remapped
+    onto them, which is how the v2 package exposes its extra rows:
+    waiting -> curious (row 10) and the click-to-wave interaction ->
+    celebration (row 11). petdex ignores this block entirely — its frame
+    table is compiled in, which is why the atlas rows match it exactly."""
+    v2 = version == 2
     manifest = {
         "id": "reachy-mini",
         "displayName": "Reachy Mini",
@@ -508,15 +546,14 @@ def write_manifest(path, version):
                        "two camera eyes, wobbly antennae.",
         "spritesheetPath": "spritesheet.webp",
         "spriteVersionNumber": version,
-        # rows are 0-based here: 0 idle, 3 waving, 5 failed, 6 waiting,
-        # 7 running, 8 review, and in v2: 9 curious, 10 celebration
         "animations": {
-            "idle": animation(0),
-            "waving": animation(3 if version == 1 else 10, loop=False),
-            "failed": animation(5),
-            "waiting": animation(6 if version == 1 else 9),
-            "running": animation(7),
-            "review": animation(8),
+            "idle": animation(specs, "idle"),
+            "waving": animation(specs, "celebration" if v2 else "waving",
+                                loop=False),
+            "failed": animation(specs, "failed"),
+            "waiting": animation(specs, "curious" if v2 else "waiting"),
+            "running": animation(specs, "running"),
+            "review": animation(specs, "review"),
         },
     }
     with open(path, "w") as f:
@@ -527,22 +564,21 @@ def write_manifest(path, version):
 if __name__ == "__main__":
     import os
 
-    atlas_v1 = build_atlas(ROW_BUILDERS_V1)
-    atlas_v2 = build_atlas(ROW_BUILDERS_V2)
-    if not (verify(atlas_v1, ROWS_V1) and verify(atlas_v2, ROWS_V2)):
+    atlas_v1 = build_atlas(ROW_SPECS_V1)
+    atlas_v2 = build_atlas(ROW_SPECS_V2)
+    if not (verify(atlas_v1, ROW_SPECS_V1) and verify(atlas_v2, ROW_SPECS_V2)):
         raise SystemExit(1)
 
     atlas_v1.save("reachy-mini/spritesheet.webp", lossless=True)
-    write_manifest("reachy-mini/pet.json", 1)
+    write_manifest("reachy-mini/pet.json", 1, ROW_SPECS_V1)
 
     os.makedirs("reachy-mini-v2", exist_ok=True)
     atlas_v2.save("reachy-mini-v2/spritesheet.webp", lossless=True)
-    write_manifest("reachy-mini-v2/pet.json", 2)
+    write_manifest("reachy-mini-v2/pet.json", 2, ROW_SPECS_V2)
 
     atlas_v1.save("preview/atlas.png")
     atlas_v2.save("preview/atlas-v2.png")
-    previews(atlas_v2, ROW_BUILDERS_V2, "preview")
+    previews(atlas_v2, ROW_SPECS_V2, "preview")
 
     print(f"OK: wrote reachy-mini/spritesheet.webp (1536x1872, 8x{ROWS_V1} grid) "
-          f"and reachy-mini-v2/spritesheet.webp (1536x2288, 8x{ROWS_V2} grid), "
-          f"{FRAMES_PER_ROW} leading frames per row")
+          f"and reachy-mini-v2/spritesheet.webp (1536x2288, 8x{ROWS_V2} grid)")
