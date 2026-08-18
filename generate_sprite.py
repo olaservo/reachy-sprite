@@ -290,8 +290,8 @@ def row_failed():
     frames = []
     for i in range(4):
         img, d = new_frame()
-        droop_l = (-11, -6) if i % 2 == 0 else (-11, -5)
-        droop_r = (11, -5) if i % 2 == 0 else (11, -6)
+        droop_l = (-14, -7) if i % 2 == 0 else (-14, -6)
+        droop_r = (14, -6) if i % 2 == 0 else (14, -7)
         draw_robot(img, dy=1, head_dy=3 if i % 2 else 2, ant_behind=True,
                    eye_style="dizzy", ant_l=droop_l, ant_r=droop_r,
                    squash=1)
