@@ -30,7 +30,7 @@ CREAM_SHADOW = (213, 208, 196, 255)
 CREAM_BRIGHT = (252, 250, 246, 255)
 EYE_DARK = (28, 28, 34, 255)
 EYE_GLINT = (255, 255, 255, 255)
-ANTENNA = (52, 52, 60, 255)
+ANTENNA = (78, 80, 92, 255)
 SHADOW = (40, 40, 48, 70)
 MOTION = (150, 150, 160, 200)
 SWEAT = (110, 170, 235, 255)
@@ -43,12 +43,13 @@ def new_frame():
 
 
 def draw_antenna(d, x0, y0, tip_dx, tip_dy):
-    """One wobbly antenna from (x0, y0) to a dotted tip."""
+    """One wobbly antenna from (x0, y0) to a ball tip."""
     mid = (x0 + tip_dx // 2, y0 - abs(tip_dy) // 2)
     tip = (x0 + tip_dx, y0 - abs(tip_dy))
-    d.line([(x0, y0), mid], fill=ANTENNA, width=1)
-    d.line([mid, tip], fill=ANTENNA, width=1)
-    d.ellipse([tip[0] - 1, tip[1] - 1, tip[0] + 1, tip[1] + 1], fill=ANTENNA)
+    d.line([(x0, y0), mid], fill=ANTENNA, width=2)
+    d.line([mid, tip], fill=ANTENNA, width=2)
+    d.ellipse([tip[0] - 2, tip[1] - 2, tip[0] + 2, tip[1] + 2], fill=ANTENNA)
+    d.point((tip[0] - 1, tip[1] - 1), fill=(190, 192, 200, 255))
 
 
 def draw_eyes(d, cx, cy, style="open", look=0, scan=0):
@@ -262,7 +263,7 @@ def row_jump():
     draw_robot(img, head_dy=-3, eye_style="open", ant_l=(-1, 9), ant_r=(1, 9))
     frames.append(img)
     img, d = new_frame()
-    draw_robot(img, head_dy=-5, eye_style="happy", ant_l=(0, 10), ant_r=(0, 10))
+    draw_robot(img, head_dy=-5, eye_style="happy", ant_l=(0, 9), ant_r=(0, 9))
     d = ImageDraw.Draw(img)
     for sx, sy in ((6, 14), (LW - 6, 12)):
         d.line([sx - 2, sy, sx + 2, sy], fill=SPARK, width=1)
