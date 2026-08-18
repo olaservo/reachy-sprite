@@ -34,12 +34,17 @@ pose + antenna angles + body yaw:
 - **full body rotation** around the vertical axis
 - **two independently animated antennae**
 
-The sprite animates the same channels: an independent head layer with
-sideways lean (`head_dx`), vertical bob (`head_dy`), and a faked roll
-(`tilt` — the face line and antenna bases go diagonal while the head
-slab stays pixel-crisp), plus per-frame antenna poses. Eye expressions
-(blinks, happy arcs, X eyes, scan lines) are a sprite-native cheat the
-real robot can't do, layered on top of the true body language.
+The sprite animates the same channels where they survive the pixel
+grid: independent head movement via sideways lean (`head_dx`) and
+vertical bob (`head_dy`) — when the head lifts, the neck mechanism
+shows in the gap like the real robot's — plus per-frame antenna poses.
+Head *roll* is deliberately not modeled: at this resolution a diagonal
+face line shreds the round lenses, and keeping the eyes looking right
+matters more. Eye expressions (blinks, happy arcs, X eyes, scan lines)
+are a sprite-native cheat the real robot can't do, layered on top of
+the true body language. And since the real robot is planted on the
+desk, it never leaves the ground in any animation — even "jumping" is
+a grounded neck-pop celebration.
 
 ## Atlas layout (v1)
 
@@ -48,15 +53,15 @@ Each row is modeled on a move from the robot's emotion/gesture library:
 
 | Row | State | Real-robot move | Animation |
 | --- | --- | --- | --- |
-| 1 | idle | idle breathing | body + head bob, lazy head roll, antenna sway, blink |
-| 2 | running-right | — | head leans and rolls into the motion, speed streaks |
+| 1 | idle | idle breathing | body + head bob, antenna sway, blink |
+| 2 | running-right | — | head leans into the motion, speed streaks |
 | 3 | running-left | — | mirrored |
 | 4 | waving | greeting (nod) | head nods while one antenna waves big, happy eyes |
-| 5 | jumping | celebration | squash, launch, hang with antennae perked straight up |
+| 5 | jumping | celebration | stays planted, head pops up on the neck, antennae straight up, sparkles |
 | 6 | failed | sad | head slumps low on the neck, antennae hang flat, X eyes, sweat drop |
-| 7 | waiting | curious | signature sideways head tilt with one antenna perked, glancing around |
+| 7 | waiting | curious | head pans side to side with one antenna perked, glancing around |
 | 8 | running | — | front-facing bounce, streaks both sides |
-| 9 | review | thinking | studious head tilt held while glasses + scan lines sweep the lenses |
+| 9 | review | thinking | head bobs slightly while glasses + scan lines sweep the lenses |
 
 A verification pass in `generate_sprite.py` asserts the atlas is exactly
 1536x1872, that every trailing cell is fully transparent (the renderer
