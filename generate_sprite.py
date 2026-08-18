@@ -43,11 +43,15 @@ def new_frame():
 
 
 def draw_antenna(d, x0, y0, tip_dx, tip_dy):
-    """One wobbly antenna from (x0, y0) to a ball tip."""
-    mid = (x0 + tip_dx // 2, y0 - abs(tip_dy) // 2)
-    tip = (x0 + tip_dx, y0 - abs(tip_dy))
-    d.line([(x0, y0), mid], fill=ANTENNA, width=2)
-    d.line([mid, tip], fill=ANTENNA, width=2)
+    """One wobbly antenna: a thin wire from (x0, y0) to a small ball tip,
+    like the real robot's. The ball and its glint carry the visibility so
+    the wire can stay 1px without the antenna disappearing.
+
+    Positive tip_dy points the tip up; negative droops it below the base."""
+    mid = (x0 + tip_dx // 2, y0 - tip_dy // 2)
+    tip = (x0 + tip_dx, y0 - tip_dy)
+    d.line([(x0, y0), mid], fill=ANTENNA, width=1)
+    d.line([mid, tip], fill=ANTENNA, width=1)
     d.ellipse([tip[0] - 2, tip[1] - 2, tip[0] + 2, tip[1] + 2], fill=ANTENNA)
     d.point((tip[0] - 1, tip[1] - 1), fill=(190, 192, 200, 255))
 
@@ -281,8 +285,8 @@ def row_failed():
     frames = []
     for i in range(4):
         img, d = new_frame()
-        droop_l = (-8, 2) if i % 2 == 0 else (-8, 1)
-        droop_r = (8, 1) if i % 2 == 0 else (8, 2)
+        droop_l = (-11, -6) if i % 2 == 0 else (-11, -5)
+        droop_r = (11, -5) if i % 2 == 0 else (11, -6)
         draw_robot(img, dy=1, head_dy=3 if i % 2 else 2,
                    eye_style="dizzy", ant_l=droop_l, ant_r=droop_r,
                    squash=1)
