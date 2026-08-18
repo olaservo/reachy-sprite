@@ -3,5 +3,44 @@
   "displayName": "Reachy Mini",
   "description": "A tiny Reachy Mini desk robot: cream shell, two camera eyes, wobbly antennae.",
   "spritesheetPath": "spritesheet.webp",
-  "spriteVersionNumber": 2
+  "spriteVersionNumber": 2,
+  "animations": {
+    "idle": {
+      "row": 0,
+      "startColumn": 0,
+      "frameCount": 4,
+      "frameDurationMs": 180
+    },
+    "waving": {
+      "row": 10,
+      "startColumn": 0,
+      "frameCount": 4,
+      "frameDurationMs": 180,
+      "loop": false
+    },
+    "failed": {
+      "row": 5,
+      "startColumn": 0,
+      "frameCount": 4,
+      "frameDurationMs": 180
+    },
+    "waiting": {
+      "row": 9,
+      "startColumn": 0,
+      "frameCount": 4,
+      "frameDurationMs": 180
+    },
+    "running": {
+      "row": 7,
+      "startColumn": 0,
+      "frameCount": 4,
+      "frameDurationMs": 180
+    },
+    "review": {
+      "row": 8,
+      "startColumn": 0,
+      "frameCount": 4,
+      "frameDurationMs": 180
+    }
+  }
 }

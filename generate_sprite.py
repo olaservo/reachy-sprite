@@ -477,7 +477,30 @@ def previews(atlas, builders, outdir):
                        append_images=gif_bg[1:], duration=180, loop=0, disposal=2)
 
 
+def animation(row, loop=True):
+    """One pet-viewer-for-codex animation entry. All four required keys must
+    be present or the entry is silently dropped by its parser."""
+    entry = {
+        "row": row,
+        "startColumn": 0,
+        "frameCount": FRAMES_PER_ROW,
+        "frameDurationMs": 180,
+    }
+    if not loop:
+        entry["loop"] = False
+    return entry
+
+
 def write_manifest(path, version):
+    """First-party Codex reads id/displayName/description/spritesheetPath and
+    ignores the rest. pet-viewer-for-codex additionally reads
+    spriteVersionNumber (row-count hint) and `animations` — without which it
+    plays its own hardcoded table (6-8 frames per row) and our 4-frame rows
+    would show blank frames. Its animation names are a fixed set of six
+    (idle, waving, running, waiting, review, failed); rows beyond those are
+    never played unless one of the six names is remapped onto them, which is
+    how the v2 package exposes its extra rows: waiting -> curious (row 10)
+    and the click-to-wave interaction -> celebration (row 11)."""
     manifest = {
         "id": "reachy-mini",
         "displayName": "Reachy Mini",
@@ -485,6 +508,16 @@ def write_manifest(path, version):
                        "two camera eyes, wobbly antennae.",
         "spritesheetPath": "spritesheet.webp",
         "spriteVersionNumber": version,
+        # rows are 0-based here: 0 idle, 3 waving, 5 failed, 6 waiting,
+        # 7 running, 8 review, and in v2: 9 curious, 10 celebration
+        "animations": {
+            "idle": animation(0),
+            "waving": animation(3 if version == 1 else 10, loop=False),
+            "failed": animation(5),
+            "waiting": animation(6 if version == 1 else 9),
+            "running": animation(7),
+            "review": animation(8),
+        },
     }
     with open(path, "w") as f:
         json.dump(manifest, f, indent=2)
