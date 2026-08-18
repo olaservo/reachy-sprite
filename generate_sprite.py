@@ -110,6 +110,7 @@ def draw_robot(
     ant_r=(2, 8),
     head_dx=0,
     head_dy=0,
+    ant_behind=False,
     glasses=False,
     ground_shadow=True,
 ):
@@ -124,6 +125,8 @@ def draw_robot(
     head_dx / head_dy: neck pan lean and vertical head bob (neck z).
     When the head lifts off the body (head_dy < 0 past the overlap), the
     neck mechanism shows in the gap, like the real robot's.
+    ant_behind: draw the antennae behind the head — drooping antennae
+    fall behind it on the real robot, so only the tips peek out.
     """
     d = ImageDraw.Draw(img)
     cx = LW // 2
@@ -159,6 +162,9 @@ def draw_robot(
         # neck mechanism peeks out when the head lifts off the body
         d.rectangle([hx - 3, head_bottom, hx + 3, body_top + 1], fill=ANTENNA)
         d.line([hx - 1, head_bottom, hx - 1, body_top], fill=(90, 90, 100, 255), width=1)
+    if ant_behind:
+        draw_antenna(d, hx - 6, head_top, *ant_l)
+        draw_antenna(d, hx + 6, head_top, *ant_r)
     d.rounded_rectangle(
         [hx - head_w // 2, head_top, hx + head_w // 2, head_bottom],
         radius=8,
@@ -179,8 +185,9 @@ def draw_robot(
         d.line([lx + 5, face_cy - 2, rx - 4, face_cy - 2], fill=SPARK, width=1)
 
     # Antennae, planted on the head top.
-    draw_antenna(d, hx - 6, head_top, *ant_l)
-    draw_antenna(d, hx + 6, head_top, *ant_r)
+    if not ant_behind:
+        draw_antenna(d, hx - 6, head_top, *ant_l)
+        draw_antenna(d, hx + 6, head_top, *ant_r)
 
 
 def motion_lines(d, side, y=30):
@@ -285,7 +292,7 @@ def row_failed():
         img, d = new_frame()
         droop_l = (-11, -6) if i % 2 == 0 else (-11, -5)
         droop_r = (11, -5) if i % 2 == 0 else (11, -6)
-        draw_robot(img, dy=1, head_dy=3 if i % 2 else 2,
+        draw_robot(img, dy=1, head_dy=3 if i % 2 else 2, ant_behind=True,
                    eye_style="dizzy", ant_l=droop_l, ant_r=droop_r,
                    squash=1)
         # sweat drop sliding down beside the head
