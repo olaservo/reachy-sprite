@@ -58,7 +58,7 @@ Each row is modeled on a move from the robot's emotion/gesture library:
 | 3 | running-left | — | mirrored |
 | 4 | waving | greeting (nod) | head nods while one antenna waves big, happy eyes |
 | 5 | jumping | celebration | stays planted, head pops up on the neck, antennae straight up, sparkles |
-| 6 | failed | sad | head slumps low on the neck, antennae hang flat, X eyes, sweat drop |
+| 6 | failed | sad | head slumps low on the neck, antennae droop behind the head, sweat drop |
 | 7 | waiting | curious | head pans side to side with one antenna perked, glancing around |
 | 8 | running | — | front-facing bounce, streaks both sides |
 | 9 | review | thinking | head bobs slightly while glasses + scan lines sweep the lenses |
