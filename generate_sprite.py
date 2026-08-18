@@ -51,32 +51,38 @@ def draw_antenna(d, x0, y0, tip_dx, tip_dy):
     d.ellipse([tip[0] - 1, tip[1] - 1, tip[0] + 1, tip[1] + 1], fill=ANTENNA)
 
 
-def draw_eyes(d, cx, cy, style="open", look=0, scan=0, mirror=False):
-    """Reachy Mini's asymmetric camera eyes: one big lens, one small."""
-    big_x = cx - 5 + look
-    small_x = cx + 7 + look
-    if mirror:
-        big_x = cx + 5 + look
-        small_x = cx - 7 + look
+def draw_eyes(d, cx, cy, style="open", look=0, scan=0):
+    """Reachy Mini's face: two equal round camera eyes joined by a thin
+    bridge, with a tiny center camera lens sitting on the bridge."""
+    lx = cx - 7 + look
+    rx = cx + 7 + look
+    mx = cx + look
+
+    # thin seam connecting the eyes + tiny center camera lens
+    # (drawn first, eyes go on top)
+    d.line([lx, cy, rx, cy], fill=(150, 148, 140, 255), width=1)
+    d.ellipse([mx - 1, cy - 1, mx + 1, cy + 1], fill=EYE_DARK)
+    d.point((mx, cy - 1), fill=(170, 170, 180, 255))
+
     if style == "open":
-        d.ellipse([big_x - 4, cy - 4, big_x + 4, cy + 4], fill=EYE_DARK)
-        d.ellipse([big_x - 2, cy - 3, big_x, cy - 1], fill=EYE_GLINT)
-        d.ellipse([small_x - 2, cy - 2, small_x + 2, cy + 2], fill=EYE_DARK)
-        d.point((small_x - 1, cy - 1), fill=EYE_GLINT)
+        for ex in (lx, rx):
+            d.ellipse([ex - 4, cy - 4, ex + 4, cy + 4], fill=EYE_DARK)
+            d.ellipse([ex - 2, cy - 3, ex, cy - 1], fill=EYE_GLINT)
     elif style == "blink":
-        d.line([big_x - 4, cy, big_x + 4, cy], fill=EYE_DARK, width=2)
-        d.line([small_x - 2, cy, small_x + 2, cy], fill=EYE_DARK, width=2)
+        for ex in (lx, rx):
+            d.line([ex - 4, cy, ex + 4, cy], fill=EYE_DARK, width=2)
     elif style == "happy":
-        d.arc([big_x - 4, cy - 3, big_x + 4, cy + 5], 180, 360, fill=EYE_DARK, width=2)
-        d.arc([small_x - 2, cy - 2, small_x + 2, cy + 3], 180, 360, fill=EYE_DARK, width=2)
+        for ex in (lx, rx):
+            d.arc([ex - 4, cy - 3, ex + 4, cy + 5], 180, 360, fill=EYE_DARK, width=2)
     elif style == "dizzy":
-        for ex, r in ((big_x, 3), (small_x, 2)):
-            d.line([ex - r, cy - r, ex + r, cy + r], fill=EYE_DARK, width=1)
-            d.line([ex - r, cy + r, ex + r, cy - r], fill=EYE_DARK, width=1)
+        for ex in (lx, rx):
+            d.line([ex - 3, cy - 3, ex + 3, cy + 3], fill=EYE_DARK, width=1)
+            d.line([ex - 3, cy + 3, ex + 3, cy - 3], fill=EYE_DARK, width=1)
     elif style == "scan":
-        d.rectangle([big_x - 4, cy - 3, big_x + 4, cy + 3], fill=EYE_DARK)
-        d.line([big_x - 3 + scan, cy - 2, big_x - 3 + scan, cy + 2], fill=(90, 220, 160, 255), width=1)
-        d.rectangle([small_x - 2, cy - 2, small_x + 2, cy + 2], fill=EYE_DARK)
+        for ex in (lx, rx):
+            d.rectangle([ex - 4, cy - 3, ex + 4, cy + 3], fill=EYE_DARK)
+            d.line([ex - 3 + scan, cy - 2, ex - 3 + scan, cy + 2],
+                   fill=(90, 220, 160, 255), width=1)
 
 
 def draw_robot(
@@ -141,10 +147,10 @@ def draw_robot(
     draw_eyes(d, hx, face_cy, style=eye_style, look=look, scan=scan)
 
     if glasses:
-        big_x, small_x = hx - 5 + look, hx + 7 + look
-        d.rectangle([big_x - 6, face_cy - 5, big_x + 6, face_cy + 5], outline=SPARK, width=1)
-        d.rectangle([small_x - 4, face_cy - 4, small_x + 4, face_cy + 4], outline=SPARK, width=1)
-        d.line([big_x + 6, face_cy - 1, small_x - 4, face_cy - 1], fill=SPARK, width=1)
+        lx, rx = hx - 7 + look, hx + 7 + look
+        d.rectangle([lx - 5, face_cy - 5, lx + 5, face_cy + 5], outline=SPARK, width=1)
+        d.rectangle([rx - 5, face_cy - 5, rx + 5, face_cy + 5], outline=SPARK, width=1)
+        d.line([lx + 5, face_cy - 2, rx - 5, face_cy - 2], fill=SPARK, width=1)
 
     # Antennae, planted on the head top.
     base_l = (hx - 6, head_top + head_tilt)
@@ -170,8 +176,8 @@ def motion_lines(d, side, y=30):
 def row_idle():
     frames = []
     bob = [0, -1, -1, 0]
-    sway = [(-2, 8), (-3, 7), (-2, 8), (-1, 8)]
-    sway_r = [(2, 8), (1, 8), (2, 8), (3, 7)]
+    sway = [(-2, 8), (-5, 7), (-2, 8), (1, 8)]
+    sway_r = [(2, 8), (-1, 8), (2, 8), (5, 7)]
     for i in range(4):
         img, d = new_frame()
         draw_robot(d, dy=bob[i], eye_style="blink" if i == 3 else "open",
